@@ -215,7 +215,10 @@
         };
 
         function connect() {
-            ws = new WebSocket(`ws://${window.location.host}/ws`);
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            console.log("Connecting to WebSocket:", wsUrl);
+            ws = new WebSocket(wsUrl);
             
             ws.onopen = () => {
                 document.getElementById('status-indicator').classList.replace('bg-red-500', 'bg-green-500');
