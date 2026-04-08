@@ -6,6 +6,7 @@ type: environment
 sdk: docker
 port: 7860
 env_module: env.openenv_env:OpenEnv
+graders: graders:TASKS
 metadata:
   problem_statement: Grid Stability Challenge
   author: Pavan
