@@ -1,3 +1,13 @@
+---
+title: EV-Grid-Optimizer
+emoji: ⚡
+colorFrom: cyan
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # ⚡ EV-GRID OPTIMIZER (OpenEnv Hackathon)
 
 A high-fidelity **Multi-Agent Reinforcement Learning (RL) Environment** designed to solve the "Grid Stability Challenge" in modern urban EV infrastructures.
