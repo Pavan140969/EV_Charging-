@@ -36,10 +36,22 @@ async def send_state(ws: WebSocket, env: EVEnvironment):
     await ws.send_text(state)
 
 async def run_episode(ws: WebSocket, env: EVEnvironment, speed: float = 1.0):
-    while env.current_step < env.max_steps:
-        env.step()
-        await send_state(ws, env)
-        await asyncio.sleep(1.0 / speed)
+    try:
+        while env.current_step < env.max_steps:
+            env.step()
+            await send_state(ws, env)
+            await asyncio.sleep(1.0 / speed)
+    except Exception:
+        pass
+
+async def heartbeat(ws: WebSocket):
+    """Keep the connection alive by sending a ping every 20 seconds."""
+    try:
+        while True:
+            await asyncio.sleep(20)
+            await ws.send_json({"type": "ping"})
+    except Exception:
+        pass
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -49,12 +61,18 @@ async def websocket_endpoint(websocket: WebSocket):
         return
     env = EVEnvironment()
     task = None
-    sessions[websocket] = {"env": env, "task": task}
+    hb_task = asyncio.create_task(heartbeat(websocket))
+    sessions[websocket] = {"env": env, "task": task, "hb_task": hb_task}
     await send_state(websocket, env)
     try:
         while True:
             data = await websocket.receive_text()
             action_data = json.loads(data)
+            
+            # Handle pong from client
+            if action_data.get("type") == "pong":
+                continue
+                
             action = Action(**action_data)
             current = sessions.get(websocket)
             if not current:
@@ -76,8 +94,11 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"WebSocket error: {e}")
     finally:
         current = sessions.pop(websocket, None)
-        if current and current.get("task") and not current["task"].done():
-            current["task"].cancel()
+        if current:
+            if current.get("task") and not current["task"].done():
+                current["task"].cancel()
+            if current.get("hb_task") and not current["hb_task"].done():
+                current["hb_task"].cancel()
         try:
             await websocket.close()
         except Exception:

@@ -225,6 +225,13 @@
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
+                // Respond to ping
+                if (data.type === 'ping') {
+                    ws.send(JSON.stringify({ type: 'pong' }));
+                    return;
+                }
+                
                 updateUI(data);
             };
 
