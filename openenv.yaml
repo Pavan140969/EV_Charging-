@@ -1,0 +1,12 @@
+name: EV-Grid-Optimizer
+description: A Multi-Agent Reinforcement Learning Environment for Grid Stability in EV infrastructures.
+version: 0.1.0
+entrypoint: server.app:app
+type: environment
+sdk: docker
+port: 7860
+env_module: env.openenv_env:OpenEnv
+metadata:
+  problem_statement: Grid Stability Challenge
+  author: Pavan
+  hackathon: Scaler OpenEnv Hackathon

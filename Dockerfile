@@ -8,6 +8,7 @@ WORKDIR /app
 COPY ./server /app/server
 COPY ./static /app/static
 COPY ./env /app/env
+COPY ./openenv.yaml /app/openenv.yaml
 COPY ./inference.py /app/inference.py
 COPY ./requirements.txt /app/requirements.txt
 
