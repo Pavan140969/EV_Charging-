@@ -19,6 +19,10 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 MAX_CONCURRENT_ENVS = int(os.getenv("MAX_CONCURRENT_ENVS", "100"))
 sessions = {}
 
+@app.get("/")
+async def root():
+    return FileResponse(os.path.join(static_dir, "index.html"))
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
