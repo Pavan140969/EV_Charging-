@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Grid Optimizer Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        neon: {
+                            blue: '#00f3ff',
+                            cyan: '#00ffff',
+                            pink: '#ff00ff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #050505;
+            background-image: radial-gradient(circle at 2px 2px, rgba(0, 243, 255, 0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+        .glass {
+            background: rgba(15, 15, 15, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 243, 255, 0.1);
+        }
+        .neon-border {
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+        }
+        .terminal-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen p-4 md:p-8">
+    <div id="app" class="max-w-7xl mx-auto space-y-8">
+        <!-- HEADER -->
+        <header class="flex justify-between items-center">
+            <div class="space-y-1">
+                <h1 class="text-3xl font-bold tracking-tighter text-neon-blue">
+                    EV-GRID <span class="text-gray-500 font-light">OPTIMIZER</span>
+                </h1>
+                <p class="text-[10px] text-neon-cyan/60 tracking-[0.2em] uppercase font-bold">OpenEnv Multi-Agent RL Simulation</p>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 text-sm text-gray-400">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse" id="status-indicator"></div>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- HERO SECTION: THE "WHY" -->
+        <div class="glass p-6 rounded-2xl neon-border grid grid-cols-1 md:grid-cols-3 gap-8 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-neon-blue/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
+            <div class="md:col-span-2 space-y-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <span class="text-neon-blue">⚡</span> Intelligent Grid Balancing
+                </h2>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    This project addresses the <span class="text-white font-medium">Grid Stability Challenge</span> in high-density EV environments. 
+                    The simulation trains a Reinforcement Learning agent to balance <span class="text-neon-cyan">Solar Energy</span>, 
+                    manage <span class="text-yellow-400">Queue Latency</span>, and prioritize <span class="text-red-500">Emergency Vehicles</span> 
+                    using a sophisticated multi-objective reward system.
+                </p>
+            </div>
+            <div class="bg-gray-900/40 p-4 rounded-xl border border-gray-800 space-y-3">
+                <h3 class="text-xs font-bold text-gray-500 tracking-widest uppercase">The Goal</h3>
+                <ul class="text-[11px] space-y-2 text-gray-300">
+                    <li class="flex items-start gap-2"><span class="text-neon-blue">→</span> Maximize Green Energy utilization</li>
+                    <li class="flex items-start gap-2"><span class="text-neon-blue">→</span> Minimize Average Wait Time</li>
+                    <li class="flex items-start gap-2"><span class="text-neon-blue">→</span> Ensure 100% Emergency Priority</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- TOP METRICS -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="glass p-6 rounded-2xl neon-border">
+                <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Total Reward</div>
+                <div class="text-3xl font-bold text-neon-blue" id="metric-reward">0.00</div>
+            </div>
+            <div class="glass p-6 rounded-2xl neon-border">
+                <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Green Energy Ratio</div>
+                <div class="text-3xl font-bold text-neon-cyan" id="metric-green">0%</div>
+            </div>
+            <div class="glass p-6 rounded-2xl neon-border">
+                <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Avg Wait Time</div>
+                <div class="text-3xl font-bold text-yellow-400" id="metric-wait">0s</div>
+            </div>
+            <div class="glass p-6 rounded-2xl neon-border">
+                <div class="text-gray-500 text-xs uppercase tracking-widest mb-1">Emergency Count</div>
+                <div class="text-3xl font-bold text-red-500" id="metric-emergency">0</div>
+            </div>
+        </div>
+
+        <!-- MAIN GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- LEFT COLUMN (STATIONS) -->
+            <div class="lg:col-span-8 space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4" id="stations-grid">
+                    <!-- Station Cards injected here -->
+                </div>
+
+                <!-- CONSOLE -->
+                <div class="glass rounded-2xl neon-border overflow-hidden">
+                    <div class="bg-gray-900/50 px-4 py-2 text-xs font-mono text-gray-500 border-b border-gray-800">AGENT CONSOLE</div>
+                    <div id="console-logs" class="p-4 h-48 font-mono text-sm overflow-y-auto terminal-scroll space-y-1">
+                        <div class="text-gray-500">[SYSTEM] Awaiting WebSocket connection...</div>
+                    </div>
+                </div>
+
+                <!-- CONTROL PANEL -->
+                <div class="glass p-6 rounded-2xl neon-border flex flex-wrap items-center gap-6">
+                    <button onclick="sendAction('run')" class="px-6 py-2 bg-neon-blue/20 border border-neon-blue text-neon-blue rounded-full hover:bg-neon-blue hover:text-black transition-all font-bold">RUN EPISODE</button>
+                    <button onclick="sendAction('step')" class="px-6 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-full hover:bg-gray-700 transition-all">STEP</button>
+                    <button onclick="sendAction('reset')" class="px-6 py-2 bg-red-500/10 border border-red-500/50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all">RESET</button>
+                    
+                    <div class="flex-grow flex items-center gap-4">
+                        <span class="text-xs text-gray-500 uppercase tracking-widest">Speed</span>
+                        <input type="range" id="speed-slider" min="0.5" max="5" step="0.5" value="1" class="flex-grow accent-neon-blue h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer">
+                        <span id="speed-value" class="text-neon-blue font-mono">1.0x</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN (EPISODE & ALERTS) -->
+            <div class="lg:col-span-4 space-y-8">
+                <div class="glass p-6 rounded-2xl neon-border space-y-4">
+                    <h3 class="text-sm font-bold tracking-widest uppercase text-gray-500">Episode Progress</h3>
+                    <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                        <div id="episode-progress-bar" class="bg-neon-blue h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-gray-500">Step: <span id="current-step">0</span>/100</span>
+                        <span class="text-neon-blue" id="progress-percent">0%</span>
+                    </div>
+                </div>
+
+                <div class="glass rounded-2xl neon-border overflow-hidden">
+                    <div class="bg-gray-900/50 px-4 py-2 text-xs font-mono text-gray-500 border-b border-gray-800 flex justify-between">
+                        <span>ALERTS PANEL</span>
+                        <span class="text-red-500/50">LIVE</span>
+                    </div>
+                    <div id="alerts-panel" class="p-4 h-64 overflow-y-auto terminal-scroll space-y-3">
+                        <div class="text-gray-600 text-sm text-center py-8 italic">No active alerts</div>
+                    </div>
+                </div>
+
+                <div class="glass p-6 rounded-2xl neon-border space-y-4">
+                    <h3 class="text-xs font-bold text-gray-500 tracking-widest uppercase">Agent Reward Function</h3>
+                    <div class="text-[10px] space-y-2 font-mono text-gray-400">
+                        <div class="flex justify-between border-b border-gray-800 pb-1">
+                            <span>Base Uptime</span>
+                            <span class="text-green-500">+1.0</span>
+                        </div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1">
+                            <span>Solar Usage</span>
+                            <span class="text-neon-cyan">+1.0x</span>
+                        </div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1">
+                            <span>Queue Penalty</span>
+                            <span class="text-yellow-500">-0.1/car</span>
+                        </div>
+                        <div class="flex justify-between border-b border-gray-800 pb-1">
+                            <span>Grid Load</span>
+                            <span class="text-red-400">-0.2/unit</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Emergency Fail</span>
+                            <span class="text-red-600">-3.0</span>
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-gray-600 italic leading-tight">
+                        The agent optimizes for "Total Reward" by maximizing green energy and minimizing congestion.
+                    </p>
+                </div>
+
+                <div class="glass p-6 rounded-2xl neon-border space-y-4">
+                    <h3 class="text-xs font-bold text-gray-500 tracking-widest uppercase">Station Usage Analytics</h3>
+                    <div class="h-48 w-full">
+                        <canvas id="usageChart"></canvas>
+                    </div>
+                    <p class="text-[9px] text-gray-600 italic leading-tight">
+                        Live comparison of total vehicles charged per station.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let usageChart;
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+
+        speedSlider.oninput = () => {
+            speedValue.innerText = speedSlider.value + 'x';
+        };
+
+        function connect() {
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+            
+            ws.onopen = () => {
+                document.getElementById('status-indicator').classList.replace('bg-red-500', 'bg-green-500');
+                document.getElementById('status-text').innerText = 'Connected to environment';
+                addLog('[SYSTEM] Connected to server');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+
+            ws.onclose = () => {
+                document.getElementById('status-indicator').classList.replace('bg-green-500', 'bg-red-500');
+                document.getElementById('status-text').innerText = 'Disconnected';
+                addLog('[SYSTEM] WebSocket disconnected. Retrying in 3s...');
+                setTimeout(connect, 3000);
+            };
+        }
+
+        function updateUI(state) {
+            // Update Metrics
+            document.getElementById('metric-reward').innerText = state.metrics.total_reward;
+            document.getElementById('metric-green').innerText = (state.metrics.green_energy_ratio * 100).toFixed(0) + '%';
+            document.getElementById('metric-wait').innerText = state.metrics.avg_wait_time.toFixed(1) + 's';
+            document.getElementById('metric-emergency').innerText = state.metrics.emergency_count;
+
+            // Update Progress
+            document.getElementById('episode-progress-bar').style.width = state.metrics.episode_progress + '%';
+            document.getElementById('progress-percent').innerText = state.metrics.episode_progress.toFixed(0) + '%';
+            document.getElementById('current-step').innerText = Math.round(state.metrics.episode_progress);
+
+            // Update Log
+            addLog(state.message);
+
+            // Update Alert Panel
+            if (state.message.includes('[ALERT]')) {
+                addAlert(state.message);
+            }
+
+            // Update Chart
+            updateChart(state.metrics.station_usage);
+
+            // Update Stations
+            const grid = document.getElementById('stations-grid');
+            grid.innerHTML = state.stations.map(s => `
+                <div class="glass p-4 rounded-xl border ${getBorderColor(s.status_color)} transition-all duration-300">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-xs font-mono text-gray-500">ID: ${s.station_id}</span>
+                        ${s.emergency_status ? '<span class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded animate-pulse">EMG</span>' : ''}
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-[10px] text-gray-500 mb-1">
+                                <span>Queue: ${s.queue_length}</span>
+                                <span>${(s.battery_level * 100).toFixed(0)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-800/50 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-neon-blue h-full" style="width: ${s.battery_level * 100}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-1">
+                                <div class="w-2 h-2 rounded-full ${s.solar_available > 0.5 ? 'bg-neon-cyan' : 'bg-gray-700'}"></div>
+                                <span class="text-[10px] text-gray-500">SOLAR</span>
+                            </div>
+                            <span class="text-[10px] font-mono ${getStatusTextColor(s.status_color)} uppercase">${s.status_color}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getBorderColor(color) {
+            if (color === 'red') return 'border-red-500/50 shadow-lg shadow-red-500/10';
+            if (color === 'yellow') return 'border-yellow-500/50 shadow-lg shadow-yellow-500/10';
+            return 'border-neon-blue/20';
+        }
+
+        function getStatusTextColor(color) {
+            if (color === 'red') return 'text-red-500';
+            if (color === 'yellow') return 'text-yellow-400';
+            return 'text-green-400';
+        }
+
+        function addLog(msg) {
+            const logs = document.getElementById('console-logs');
+            const entry = document.createElement('div');
+            if (msg.includes('[ALERT]')) entry.className = 'text-red-400 font-bold';
+            else if (msg.includes('[RESET]')) entry.className = 'text-neon-cyan';
+            else if (msg.includes('[ARRIVAL]')) entry.className = 'text-yellow-200/80';
+            else entry.className = 'text-gray-400';
+            
+            entry.innerText = msg;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function addAlert(msg) {
+            const panel = document.getElementById('alerts-panel');
+            if (panel.innerText.includes('No active alerts')) panel.innerHTML = '';
+            
+            const alert = document.createElement('div');
+            alert.className = 'p-3 bg-red-500/10 border-l-2 border-red-500 text-xs text-red-400 animate-in fade-in slide-in-from-right';
+            alert.innerHTML = `<div class="font-bold mb-1">EMERGENCY ALERT</div>${msg}`;
+            panel.prepend(alert);
+        }
+
+        function updateChart(usageData) {
+            if (!usageChart) {
+                const ctx = document.getElementById('usageChart').getContext('2d');
+                usageChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10'],
+                        datasets: [{
+                            label: 'Vehicles Charged',
+                            data: usageData,
+                            backgroundColor: 'rgba(0, 243, 255, 0.5)',
+                            borderColor: 'rgba(0, 243, 255, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                                ticks: { color: '#666', font: { size: 10 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#666', font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            } else {
+                usageChart.data.datasets[0].data = usageData;
+                usageChart.update('none'); // Update without animation for performance
+            }
+        }
+
+        function sendAction(type) {
+            const speed = parseFloat(speedSlider.value);
+            ws.send(JSON.stringify({ type, speed }));
+        }
+
+        connect();
+    </script>
+</body>
+</html>
