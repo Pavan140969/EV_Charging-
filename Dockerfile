@@ -8,6 +8,7 @@ WORKDIR /app
 COPY ./server /app/server
 COPY ./static /app/static
 COPY ./env /app/env
+COPY ./inference.py /app/inference.py
 COPY ./requirements.txt /app/requirements.txt
 
 RUN pip install --no-cache-dir -r /app/requirements.txt

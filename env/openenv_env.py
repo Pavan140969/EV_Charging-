@@ -2,7 +2,7 @@ from typing import Dict, Any, Tuple
 from server.ev_environment import EVEnvironment
 
 
-class OpenEnvWrapper:
+class OpenEnv:
     def __init__(self):
         self.env = EVEnvironment()
         self.done = False
@@ -29,3 +29,5 @@ class OpenEnvWrapper:
     def _observation(self) -> Dict[str, Any]:
         state = self.env.state().model_dump()
         return state
+
+OpenEnvWrapper = OpenEnv

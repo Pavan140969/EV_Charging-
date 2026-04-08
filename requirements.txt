@@ -5,3 +5,5 @@ pydantic
 numpy
 pandas
 python-dotenv
+requests
+openenv-core

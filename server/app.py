@@ -1,13 +1,30 @@
 import asyncio
 import json
+from typing import Dict, Any
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 from .ev_environment import EVEnvironment
 from .models import Action
+from env.openenv_env import OpenEnv
 import os
 
 app = FastAPI()
+
+# Global OpenEnv instance for submission/testing
+openenv = OpenEnv()
+
+@app.post("/reset")
+@app.post("/openenv/reset")
+async def reset():
+    obs = openenv.reset()
+    return {"observation": obs}
+
+@app.post("/step")
+@app.post("/openenv/step")
+async def step(action: Dict[str, Any]):
+    obs, reward, done, info = openenv.step(action)
+    return {"observation": obs, "reward": reward, "done": done, "info": info}
 
 @app.get("/favicon.ico")
 async def favicon():
@@ -24,6 +41,7 @@ async def root():
     return FileResponse(os.path.join(static_dir, "index.html"))
 
 @app.get("/health")
+@app.get("/openenv/health")
 async def health():
     return {"status": "ok"}
 
@@ -40,9 +58,12 @@ async def run_episode(ws: WebSocket, env: EVEnvironment, speed: float = 1.0):
         while env.current_step < env.max_steps:
             env.step()
             await send_state(ws, env)
-            await asyncio.sleep(1.0 / speed)
-    except Exception:
-        pass
+            # Use a safe sleep value
+            await asyncio.sleep(1.0 / max(0.1, speed))
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        print(f"Simulation error: {e}")
 
 async def heartbeat(ws: WebSocket):
     """Keep the connection alive by sending a ping every 20 seconds."""
