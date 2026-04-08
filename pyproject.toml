@@ -1,0 +1,26 @@
+[project]
+name = "ev-grid-optimizer"
+version = "0.1.0"
+description = "A Multi-Agent Reinforcement Learning Environment for Grid Stability in EV infrastructures."
+authors = [{ name = "Pavan" }]
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "websockets",
+    "pydantic",
+    "numpy",
+    "pandas",
+    "python-dotenv",
+    "requests",
+    "openenv-core"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["server", "env"]

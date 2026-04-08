@@ -125,8 +125,11 @@ async def websocket_endpoint(websocket: WebSocket):
         except Exception:
             pass
 
-if __name__ == "__main__":
+def main():
     import uvicorn
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8001"))
     uvicorn.run(app, host=host, port=port)
+
+if __name__ == "__main__":
+    main()

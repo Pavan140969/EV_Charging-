@@ -9,6 +9,8 @@ COPY ./server /app/server
 COPY ./static /app/static
 COPY ./env /app/env
 COPY ./openenv.yaml /app/openenv.yaml
+COPY ./pyproject.toml /app/pyproject.toml
+COPY ./uv.lock /app/uv.lock
 COPY ./inference.py /app/inference.py
 COPY ./requirements.txt /app/requirements.txt
 
