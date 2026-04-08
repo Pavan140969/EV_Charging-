@@ -50,36 +50,40 @@ def get_llm_action(observation):
         return {"type": "step"}
 
 def run_inference():
-    print(f"Starting OpenEnv Inference at {BASE_URL}...")
+    print(f"Starting OpenEnv Inference at {BASE_URL}...", flush=True)
     
+    # Wait for server to be ready (only once at the start)
+    print("Waiting for server to be ready...", flush=True)
+    for _ in range(15):
+        try:
+            response = requests.get(f"{BASE_URL}/health", timeout=5)
+            if response.status_code == 200:
+                print("Server is ready!", flush=True)
+                break
+        except Exception:
+            pass
+        time.sleep(2)
+    else:
+        print("Error: Server did not become ready in time.", flush=True)
+        return
+
     tasks = ["emergency_priority", "green_energy", "queue_optimization"]
     
     for task_name in tasks:
-        print(f"--- Running Task: {task_name} ---", flush=True)
+        print(f"\n--- Running Task: {task_name} ---", flush=True)
         
-        # Wait for server to be ready
-        for _ in range(10):
-            try:
-                response = requests.get(f"{BASE_URL}/health")
-                if response.status_code == 200:
-                    break
-            except Exception:
-                pass
-            print("Waiting for server...", flush=True)
-            time.sleep(2)
-
-        # 1. Reset the environment
-        print(f"Resetting environment for {task_name}...", flush=True)
+        # 1. Reset the environment for the specific task
         try:
+            # Try both standard and openenv-prefixed endpoints
             response = requests.post(f"{BASE_URL}/openenv/reset")
             if response.status_code == 404:
                 response = requests.post(f"{BASE_URL}/reset")
         except Exception as e:
-            print(f"Connection error: {e}", flush=True)
+            print(f"Connection error during reset: {e}", flush=True)
             continue
             
         if response.status_code != 200:
-            print(f"Error resetting: {response.status_code}", flush=True)
+            print(f"Error resetting environment: {response.status_code}", flush=True)
             continue
         
         result = response.json()
@@ -91,18 +95,22 @@ def run_inference():
         total_reward = 0.0
         num_steps = 10
         
-        # 2. Run steps
+        # 2. Run steps for the task
         for i in range(num_steps):
+            # Get action from LLM proxy based on current observation
             action = get_llm_action(obs)
+            
             try:
+                # Try both standard and openenv-prefixed endpoints
                 response = requests.post(f"{BASE_URL}/openenv/step", json=action)
                 if response.status_code == 404:
                     response = requests.post(f"{BASE_URL}/step", json=action)
             except Exception as e:
-                print(f"Step {i+1} error: {e}", flush=True)
+                print(f"Step {i+1} connection error: {e}", flush=True)
                 break
                 
             if response.status_code != 200:
+                print(f"Step {i+1} failed with status {response.status_code}", flush=True)
                 break
                 
             result = response.json()
@@ -115,12 +123,11 @@ def run_inference():
             time.sleep(0.1)
         
         # REQUIRED: Print END block with normalized score (0 to 1)
-        # Based on the grader logic, let's normalize the final result
-        # Final score must be strictly between 0 and 1
+        # score must be strictly between 0 and 1
         final_score = max(0.1, min(0.9, total_reward / (num_steps * 10.0)))
         print(f"[END] task={task_name} score={final_score} steps={num_steps}", flush=True)
     
-    print("All tasks completed successfully.", flush=True)
+    print("\nAll tasks completed successfully.", flush=True)
 
 if __name__ == "__main__":
     run_inference()
