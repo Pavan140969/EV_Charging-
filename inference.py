@@ -21,8 +21,8 @@ else:
 
 def get_llm_action(observation):
     """Call the LLM proxy to determine the next action based on observation."""
-    if not client:
-        return {"type": "step"} # Fallback if no LLM configured
+    if not client or observation is None:
+        return {"type": "step"} # Fallback if no LLM configured or no observation
         
     try:
         # Construct prompt for the LLM
@@ -39,7 +39,12 @@ def get_llm_action(observation):
         )
         
         llm_response = response.choices[0].message.content
-        return json.loads(llm_response)
+        try:
+            return json.loads(llm_response)
+        except json.JSONDecodeError:
+            # Fallback if LLM returns text instead of JSON
+            print(f"LLM returned invalid JSON: {llm_response}")
+            return {"type": "step"}
     except Exception as e:
         print(f"LLM call failed: {e}")
         return {"type": "step"}
@@ -53,9 +58,9 @@ def run_inference():
             response = requests.get(f"{BASE_URL}/health")
             if response.status_code == 200:
                 break
-        except:
+        except Exception:
             pass
-        print("Waiting for server...")
+        print("Waiting for server...", flush=True)
         time.sleep(2)
 
     # 1. Reset the environment
